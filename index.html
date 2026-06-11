@@ -1,0 +1,118 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>王国崛起</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="header"><h1>王国崛起</h1></div>
+<div class="resources" id="resources"></div>
+<div class="main-area">
+  <div class="map-viewport" id="mapViewport">
+    <div class="map-layer" id="mapLayer"></div>
+    <div id="player">🧑</div>
+    <div id="selOverlay"></div>
+    <div id="workers"></div>
+    <div class="upgrade-panel" id="upgradePanel"></div>
+    <button class="shop-btn" id="shopBtn" title="商店">🛒<span class="shop-dot" id="shopDot"></span></button>
+    <button class="game-btn" id="gameBtn" title="游戏">🎮</button>
+    <div class="placement-hint" id="placementHint">点击地图放置建筑 &nbsp;<span class="key">Esc</span>&nbsp; 取消</div>
+    <div class="shop-overlay" id="shopOverlay">
+      <div class="shop-panel" style="position:relative">
+        <button class="shop-close">✕</button>
+        <h3>🏪 商店</h3>
+        <div class="shop-section">
+          <h4>🧱 城墙</h4>
+          <div style="font-size:11px;margin-bottom:4px">库存:<span id="shopStock">0</span></div>
+          <div style="display:flex;align-items:center;gap:4px;margin:4px 0">
+            <button class="qty-btn" id="buyQtyDec">-</button><span class="qty-val" id="shopQty">1</span>
+            <button class="qty-btn" id="buyQtyInc">+</button>
+            <span style="font-size:10px;margin-left:4px">100G 合计:</span><span style="font-weight:bold;font-size:12px;color:var(--gold)" id="shopTotal">100</span>
+          </div>
+          <button id="buyWallBtn" style="width:100%;background:var(--gold);color:#1a1a2e;font-weight:bold;padding:4px 8px;border:none;border-radius:4px;cursor:pointer">购买城墙</button>
+        </div>
+        <div class="shop-section">
+          <h4>🏗️ 建筑</h4>
+          <div id="pendingBuild" style="font-size:10px;color:var(--gold);margin-bottom:4px"></div>
+          <div id="buildShop" style="font-size:11px;line-height:1.8"></div>
+        </div>
+      </div>
+    </div>
+    <div class="game-overlay" id="gameOverlay">
+      <div class="game-panel">
+        <button class="game-close">✕</button>
+        <h3>🎮 动物消消乐</h3>
+        <div class="game-info">
+          <span>🏆 得分</span>
+          <span class="game-score" id="gameScore">0</span>
+        </div>
+        <div class="game-grid" id="gameGrid"></div>
+        <div class="game-combo" id="gameCombo"></div>
+        <div class="game-hint">点击选中动物，再点击相邻动物交换</div>
+        <button class="game-hint-btn" id="hintBtn">💡 提示</button>
+      </div>
+    </div>
+    <div class="interior-overlay" id="interiorOverlay">
+      <div class="interior-panel">
+        <h3 id="intTitle"></h3>
+        <div class="interior-hint">WASD 移动 &nbsp;|&nbsp; Space/Esc 离开</div>
+        <div class="int-grid" id="intGrid"></div>
+      </div>
+    </div>
+    <div class="help-overlay" id="helpOverlay" style="display:none;position:absolute;inset:0;z-index:90;background:rgba(0,0,0,0.8);align-items:center;justify-content:center">
+      <div style="background:var(--card);border:2px solid var(--gold-dark);border-radius:14px;padding:20px 28px;max-width:400px;font-size:12px;line-height:2">
+        <h3 style="color:var(--gold);text-align:center;margin-bottom:10px">⌨️ 快捷键</h3>
+        <div><b>WASD/方向键</b> — 移动</div><div><b>空格</b> — 进入建筑/废墟</div>
+        <div><b>Esc</b> — 关闭面板/取消放置</div><div><b>M</b> — 建筑移动模式</div>
+        <div><b>H</b> — 显示此帮助</div><div><b>滚轮</b> — 缩放</div>
+        <div><b>拖拽</b> — 平移地图</div><div><b>点击地图</b> — 选中格子</div>
+        <div style="color:var(--purple);margin-top:4px"><b>站在怪物旁按 M</b> — 三消战斗</div>
+        <button onclick="document.getElementById('helpOverlay').style.display='none'" style="display:block;margin:10px auto 0;padding:6px 20px;border:1px solid var(--gold-dark);border-radius:6px;background:var(--card);color:var(--gold);cursor:pointer">关闭</button>
+      </div>
+    </div>
+    <div class="float-card" id="floatCard">
+      <div class="drag-handle" id="fcDrag"></div>
+      <button id="fcClose">x</button>
+      <div id="fcTitle"></div><div id="fcStats"></div><div id="fcCost"></div>
+      <button id="fcBtn">操作</button>
+      <button id="fcEnter">进入</button>
+      <button id="fcReclaim">收回</button>
+    </div>
+    <div class="map-controls">
+      <button class="ctrl-btn" id="zoomInBtn">+</button>
+      <span class="ctrl-label" id="zoomLabel">150%</span>
+      <button class="ctrl-btn" id="zoomOutBtn">-</button>
+      <button class="ctrl-btn" id="zoomResetBtn" style="font-size:13px">O</button>
+      <div style="height:4px"></div>
+      <button class="ctrl-btn" id="moveToggle">M</button>
+    </div>
+  </div>
+  <div class="side-panel">
+    <div class="panel-box">
+      <div class="panel-title">统计</div>
+      <div class="stat-row"><span>城堡等级</span><span class="val" id="statCastle">1</span></div>
+      <div class="stat-row"><span>领地</span><span class="val" id="statClaimed">0</span></div>
+      <div class="stat-row"><span>人口</span><span class="val" id="statPopCap">5</span></div>
+      <div class="stat-row"><span>战力</span><span class="val" id="statPower">0</span></div>
+      <div class="stat-row"><span>金币/秒</span><span class="val" id="statGps">0</span></div>
+      <div class="stat-row"><span>图鉴</span><span class="val" id="statBestiary">0/7</span></div>
+      <div class="stat-row"><span>成就</span><span class="val" id="statAchieve">0/12</span></div>
+      <div class="stat-row"><span>威望</span><span class="val" id="statPrestige">0</span></div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-title">日志</div>
+      <div class="log-list" id="logList"></div>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn" id="saveBtn">保存</button>
+      <button class="action-btn danger" id="resetBtn">重置</button>
+      <button class="action-btn" id="prestigeBtn" style="color:var(--purple);border-color:var(--purple)">转生</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
