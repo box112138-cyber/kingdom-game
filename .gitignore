@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.opencode/
 
 # System files
 .DS_Store
