@@ -37,11 +37,41 @@ http://localhost:8787/
 
 页面顶部填写同一个服务器地址和房间名，点击“联机”即可加入同一房间。局域网联机时，把服务器地址改成主机的局域网地址，例如 `ws://192.168.1.20:8787`。
 
-公网联机需要把 `server/index.js` 部署到支持 Node.js 和 WebSocket 的平台，例如 Render、Railway、Fly.io 或自己的服务器。GitHub Pages 只能托管静态页面，不能直接运行 WebSocket 服务端；部署后在页面顶部填写对应的 `wss://...` 地址。
+跨网络联机有两种方式：临时隧道或部署公网服务。GitHub Pages 只能托管静态页面，不能直接运行 WebSocket 服务端。
+
+### 不绑卡临时联机
+
+这个方式不需要注册云平台，也不需要填写银行卡，但你的电脑必须一直开着。
+
+先启动本地游戏服务：
+
+```bash
+npm start
+```
+
+再打开另一个终端，运行：
+
+```bash
+npm run tunnel
+```
+
+命令会输出一个公网地址，例如：
+
+```text
+https://abc-123.loca.lt
+```
+
+你和朋友都打开这个地址。页面顶部“联机服务器”填写对应的 WebSocket 地址：
+
+```text
+wss://abc-123.loca.lt
+```
+
+所有玩家填写同一个房间名即可跨网络联机。每次重新运行隧道，地址可能会变化。
 
 ### Render 部署联机服务端
 
-项目已包含 `render.yaml`，可以用 Render Blueprint 一键部署：
+Render 是长期部署方式，但新账号可能要求绑卡。项目已包含 `render.yaml`，可以用 Render Blueprint 一键部署：
 
 1. 打开 `https://dashboard.render.com/blueprints`。
 2. 点击 `New Blueprint Instance`。

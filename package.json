@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
-    "serve": "node server/index.js"
+    "serve": "node server/index.js",
+    "tunnel": "npx localtunnel --port 8787"
   },
   "dependencies": {
     "ws": "^8.18.0"
