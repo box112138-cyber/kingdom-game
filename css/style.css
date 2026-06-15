@@ -425,6 +425,85 @@ body {
 
 .action-btn.danger:hover { border-color: var(--red); color: var(--red); }
 
+.character-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  background: rgba(0, 0, 0, 0.78);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.character-overlay.show { display: flex; }
+
+.character-panel {
+  width: min(420px, 94vw);
+  background: var(--card);
+  border: 2px solid var(--gold-dark);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.character-panel h3 { color: var(--gold); margin-bottom: 8px; }
+
+.character-preview { color: var(--text-dim); font-size: 12px; margin-bottom: 12px; }
+
+#characterName {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.avatar-choice {
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.avatar-choice:hover,
+.avatar-choice.selected {
+  border-color: var(--gold);
+  background: rgba(240, 192, 64, 0.18);
+  box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.25);
+}
+
+.character-actions { display: flex; gap: 10px; }
+
+.character-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--gold-dark);
+  background: var(--card);
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.character-actions button:last-child {
+  background: var(--gold);
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
 .shop-btn {
   position: absolute;
   top: 10px;

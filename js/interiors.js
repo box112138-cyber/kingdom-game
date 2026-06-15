@@ -55,7 +55,7 @@ export function renderInterior() {
         }
       }
       if (state.intPlayer && state.intPlayer.r === r && state.intPlayer.c === c) {
-        content = '<span class="int-player">🧑</span>';
+        content = '<span class="int-player">' + ((state.gs.character && state.gs.character.avatar) || '🧑') + '</span>';
       }
       h += '<div class="' + cls + '">' + content + '</div>';
     }

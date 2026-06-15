@@ -59,6 +59,8 @@ export const state = {
 export const MIN_Z = 0.08;
 export const MAX_Z = 7.0;
 
+export const DEFAULT_CHARACTER = { name: '冒险者', avatar: '🧑' };
+
 // Interiors config (derived, immutable)
 export const INTERIORS = createInteriors();
 
@@ -77,12 +79,67 @@ export function createState() {
     walls: 0,
     upgradeQueue: [],
     collectedItems: [],
+    inventory: {},
     treasures: [],
     monsters: [],
     bestiary: [],
     ruins: [],
     prestige: 0,
+    character: { ...DEFAULT_CHARACTER },
     achievements: { trees: 0, stone: 0, fish: 0, kills: 0, buildings: 0, unlocked: [] }
+  };
+}
+
+export function normalizeGameState(saved) {
+  const defaults = createState();
+  const current = { ...defaults, ...(saved || {}) };
+  current.resources = { ...defaults.resources, ...(current.resources || {}) };
+  current.buildings = current.buildings || {};
+  current.claimedCells = current.claimedCells || {};
+  current.bPositions = current.bPositions || {};
+  current.trainQueue = { ...defaults.trainQueue, ...(current.trainQueue || {}) };
+  current.heroes = normalizeHeroes(current.heroes, defaults.heroes);
+  current.walls = current.walls || 0;
+  current.upgradeQueue = current.upgradeQueue || [];
+  current.collectedItems = current.collectedItems || [];
+  current.inventory = current.inventory || {};
+  current.treasures = current.treasures || [];
+  current.monsters = current.monsters || [];
+  current.bestiary = current.bestiary || [];
+  current.ruins = current.ruins || [];
+  current.prestige = current.prestige || 0;
+  current.character = normalizeStoredCharacter(current.character);
+  current.achievements = {
+    ...defaults.achievements,
+    ...(current.achievements || {}),
+    unlocked: [...((current.achievements && current.achievements.unlocked) || [])]
+  };
+  initBuildings(current);
+  return current;
+}
+
+function normalizeHeroes(heroes, defaults) {
+  const current = heroes || {};
+  return {
+    ...defaults,
+    ...current,
+    barbarianKing: {
+      ...defaults.barbarianKing,
+      ...(current.barbarianKing || {}),
+      equipment: {
+        ...defaults.barbarianKing.equipment,
+        ...((current.barbarianKing && current.barbarianKing.equipment) || {})
+      }
+    }
+  };
+}
+
+function normalizeStoredCharacter(character) {
+  const current = character || {};
+  const name = String(current.name || DEFAULT_CHARACTER.name).replace(/[<>]/g, '').trim().slice(0, 12);
+  return {
+    name: name || DEFAULT_CHARACTER.name,
+    avatar: current.avatar || DEFAULT_CHARACTER.avatar
   };
 }
 
@@ -123,6 +180,7 @@ export function saveGame() {
       walls: state.gs.walls,
       cooldowns: { ...state.cooldowns },
       player: { r: state.player.r, c: state.player.c },
+      character: { ...(state.gs.character || DEFAULT_CHARACTER) },
       firstHarvest: state.firstHarvest,
       logs: state.gs.logs.slice(-30),
       collectedItems: [...state.gs.collectedItems],

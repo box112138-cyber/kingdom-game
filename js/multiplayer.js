@@ -1,5 +1,5 @@
 import { MC, MR, CS } from './config.js';
-import { state, createState, initBuildings, addLog } from './state.js';
+import { state, addLog, DEFAULT_CHARACTER, normalizeGameState } from './state.js';
 import { renderMap, rebuildUI, renderUpgradePanel } from './renderer.js';
 import { updateShopDot, updateShopSidebar } from './shop.js';
 
@@ -13,8 +13,10 @@ let applyingRemote = false;
 let lastSnapshotAt = 0;
 let lastPresenceAt = 0;
 let serverRevision = 0;
+let onSnapshotApplied = null;
 
-export function initMultiplayer() {
+export function initMultiplayer(options = {}) {
+  onSnapshotApplied = typeof options.onSnapshotApplied === 'function' ? options.onSnapshotApplied : null;
   const serverInput = document.getElementById('onlineServer');
   const roomInput = document.getElementById('onlineRoom');
   const nameInput = document.getElementById('onlineName');
@@ -141,26 +143,14 @@ function applySnapshot(snapshot, revision) {
   serverRevision = revision;
   applyingRemote = true;
   try {
-    state.gs = Object.assign(createState(), clone(snapshot.gs || {}));
-    initBuildings(state.gs);
-    state.gs.claimedCells = state.gs.claimedCells || {};
-    state.gs.bPositions = state.gs.bPositions || {};
-    state.gs.trainQueue = state.gs.trainQueue || { count: 0, total: 0, ticks: 0, level: 1 };
-    state.gs.heroes = state.gs.heroes || { barbarianKing: { level: 1, equipment: { weapon: null, armor: null, ring: null } } };
-    state.gs.upgradeQueue = state.gs.upgradeQueue || [];
-    state.gs.collectedItems = state.gs.collectedItems || [];
-    state.gs.inventory = state.gs.inventory || {};
-    state.gs.treasures = state.gs.treasures || [];
-    state.gs.monsters = state.gs.monsters || [];
-    state.gs.bestiary = state.gs.bestiary || [];
-    state.gs.ruins = state.gs.ruins || [];
-    state.gs.achievements = state.gs.achievements || { trees: 0, stone: 0, fish: 0, kills: 0, buildings: 0, unlocked: [] };
+    state.gs = normalizeGameState(clone(snapshot.gs || {}));
     if (snapshot.mapData) state.mapData = clone(snapshot.mapData);
     state.bPos = clone(snapshot.bPos || state.gs.bPositions || {});
     state.gs.bPositions = { ...state.bPos };
     state.cooldowns = clone(snapshot.cooldowns || {});
     state.firstHarvest = snapshot.firstHarvest !== false;
     renderMap();
+    if (onSnapshotApplied) onSnapshotApplied();
     renderUpgradePanel();
     rebuildUI();
     updateShopSidebar();
@@ -188,7 +178,8 @@ function sendSnapshot() {
 }
 
 function sendPresence() {
-  send({ type: 'presence', r: state.player.r, c: state.player.c, name: state.online.name, avatar: '🧑' });
+  const character = state.gs.character || DEFAULT_CHARACTER;
+  send({ type: 'presence', r: state.player.r, c: state.player.c, name: state.online.name || character.name, avatar: character.avatar });
 }
 
 function updatePeer(msg) {

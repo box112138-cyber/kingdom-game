@@ -117,9 +117,22 @@
       <div class="log-list" id="logList"></div>
     </div>
     <div class="action-bar">
+      <button class="action-btn" id="characterBtn">角色</button>
       <button class="action-btn" id="saveBtn">保存</button>
       <button class="action-btn danger" id="resetBtn">重置</button>
       <button class="action-btn" id="prestigeBtn" style="color:var(--purple);border-color:var(--purple)">转生</button>
+    </div>
+  </div>
+</div>
+<div class="character-overlay" id="characterOverlay">
+  <div class="character-panel">
+    <h3 id="characterTitle">创建角色</h3>
+    <div class="character-preview" id="characterPreview">选择你的王国化身</div>
+    <input id="characterName" type="text" maxlength="12" placeholder="角色名">
+    <div class="avatar-grid" id="characterAvatars"></div>
+    <div class="character-actions">
+      <button id="characterCancel" type="button">取消</button>
+      <button id="characterSave" type="button">确认</button>
     </div>
   </div>
 </div>

@@ -73,6 +73,11 @@ export function updatePlayerPos() {
   plEl.style.top = ((state.player.r * CS + CS / 2) * state.viewZoom + state.viewPanY) + 'px';
 }
 
+export function updatePlayerAvatar() {
+  const plEl = document.getElementById('player');
+  if (plEl) plEl.textContent = (state.gs.character && state.gs.character.avatar) || '🧑';
+}
+
 export function followPlayer() {
   if (!cachedVW || !cachedVH) refreshViewportCache();
   const vw = cachedVW, vh = cachedVH;

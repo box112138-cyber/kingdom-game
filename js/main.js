@@ -1,7 +1,7 @@
 import { B, MC, MR } from './config.js';
 import { rf } from './utils.js';
 import {
-  state, createState, initBuildings, initState, isClaimed, addLog, saveGame
+  state, createState, initBuildings, initState, isClaimed, addLog, saveGame, normalizeGameState
 } from './state.js';
 import { fullGenMap, placeBuildings, restoreBuildingsFromSave, occupyCells, genTreasures, genMonsters, genWaveMonsters, genRuins } from './map.js';
 import {
@@ -23,10 +23,11 @@ import {
 import {
   applyT, setZ, zoomIn, zoomOut, zoomReset, focusOnCastle,
   updatePlayerPos, followPlayer, handleClick, refreshViewportCache,
-  setupKeyboard, setupViewport, setupFloatCardDrag, setupMoveToggle
+  setupKeyboard, setupViewport, setupFloatCardDrag, setupMoveToggle, updatePlayerAvatar
 } from './player.js';
 import { showInterior, hideInterior } from './interiors.js';
 import { initMultiplayer, markWorldDirty, updatePresence } from './multiplayer.js';
+import { initCharacterPicker, openCharacterPicker } from './character.js';
 
 // ========== Match-3 Score Conversion ==========
 
@@ -93,28 +94,12 @@ function loadGame() {
     const d = localStorage.getItem('kingdom_v13');
     if (d) {
       const data = JSON.parse(d);
-      state.gs = Object.assign(createState(), data);
-      initBuildings(state.gs);
-      state.gs.claimedCells = state.gs.claimedCells || {};
-      state.gs.bPositions = state.gs.bPositions || {};
-      state.gs.trainQueue = state.gs.trainQueue || { count: 0, total: 0, ticks: 0, level: 1 };
-      state.gs.heroes = state.gs.heroes || { barbarianKing: { level: 1, equipment: { weapon: null, armor: null, ring: null } } };
-      state.gs.walls = state.gs.walls || 0;
-      state.gs.resources.gems = state.gs.resources.gems || 0;
-      state.gs.upgradeQueue = state.gs.upgradeQueue || [];
-      state.gs.collectedItems = state.gs.collectedItems || [];
-      state.gs.inventory = state.gs.inventory || {};
-      state.gs.treasures = state.gs.treasures || [];
-      state.gs.monsters = state.gs.monsters || [];
-      state.gs.bestiary = state.gs.bestiary || [];
-      state.gs.achievements = state.gs.achievements || { trees: 0, stone: 0, fish: 0, kills: 0, buildings: 0, unlocked: [] };
-      state.gs.ruins = state.gs.ruins || [];
-      state.gs.prestige = state.gs.prestige || 0;
-      state.cooldowns = state.gs.cooldowns || {};
-      state.firstHarvest = state.gs.firstHarvest !== false;
-      if (state.gs.player) {
-        state.player.r = state.gs.player.r;
-        state.player.c = state.gs.player.c;
+      state.gs = normalizeGameState(data);
+      state.cooldowns = data.cooldowns || {};
+      state.firstHarvest = data.firstHarvest !== false;
+      if (data.player) {
+        state.player.r = data.player.r;
+        state.player.c = data.player.c;
       }
 
       fullGenMap();
@@ -161,6 +146,7 @@ function resetGame() {
   updateShopDot();
   addLog('已重置');
   markWorldDirty();
+  openCharacterPicker({ title: '创建角色', allowClose: false });
 }
 
 // ========== Prestige ==========
@@ -486,7 +472,8 @@ function startGame() {
   setupViewport();
   setupFloatCardDrag();
   setupMoveToggle();
-  initMultiplayer();
+  initMultiplayer({ onSnapshotApplied: updatePlayerAvatar });
+  initCharacterPicker({ onChange: function () { updatePlayerAvatar(); updatePresence(); } });
 
   renderMap();
   rebuildUI();
@@ -497,6 +484,7 @@ function startGame() {
   if (!loaded) {
     addLog('👋 欢迎来到王国崛起！WASD移动，采集资源，建造王国');
     addLog('💡 提示：建造农场和金矿来获取稳定收入');
+    openCharacterPicker({ title: '创建角色', allowClose: false });
   }
 
   refreshViewportCache();
