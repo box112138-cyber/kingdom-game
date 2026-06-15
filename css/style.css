@@ -425,6 +425,44 @@ body {
 
 .action-btn.danger:hover { border-color: var(--red); color: var(--red); }
 
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-item {
+  padding: 8px;
+  border: 1px solid rgba(240, 192, 64, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.quest-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.quest-desc { margin-top: 3px; color: var(--text-dim); font-size: 10px; }
+
+.quest-progress {
+  margin-top: 6px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.quest-progress span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+
 .character-overlay {
   display: none;
   position: fixed;

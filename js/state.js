@@ -60,6 +60,7 @@ export const MIN_Z = 0.08;
 export const MAX_Z = 7.0;
 
 export const DEFAULT_CHARACTER = { name: '冒险者', avatar: '🧑' };
+export const SCHEMA_VERSION = 1;
 
 // Interiors config (derived, immutable)
 export const INTERIORS = createInteriors();
@@ -68,6 +69,7 @@ export const INTERIORS = createInteriors();
 
 export function createState() {
   return {
+    schemaVersion: SCHEMA_VERSION,
     resources: { gold: 500, food: 300, soldiers: 0, wood: 50, stone: 30, gems: 0 },
     buildings: {},
     tickCount: 0,
@@ -86,6 +88,7 @@ export function createState() {
     ruins: [],
     prestige: 0,
     character: { ...DEFAULT_CHARACTER },
+    quests: createQuestState(),
     achievements: { trees: 0, stone: 0, fish: 0, kills: 0, buildings: 0, unlocked: [] }
   };
 }
@@ -93,6 +96,7 @@ export function createState() {
 export function normalizeGameState(saved) {
   const defaults = createState();
   const current = { ...defaults, ...(saved || {}) };
+  current.schemaVersion = SCHEMA_VERSION;
   current.resources = { ...defaults.resources, ...(current.resources || {}) };
   current.buildings = current.buildings || {};
   current.claimedCells = current.claimedCells || {};
@@ -109,6 +113,7 @@ export function normalizeGameState(saved) {
   current.ruins = current.ruins || [];
   current.prestige = current.prestige || 0;
   current.character = normalizeStoredCharacter(current.character);
+  current.quests = normalizeQuestState(current.quests);
   current.achievements = {
     ...defaults.achievements,
     ...(current.achievements || {}),
@@ -116,6 +121,34 @@ export function normalizeGameState(saved) {
   };
   initBuildings(current);
   return current;
+}
+
+export function createQuestState() {
+  return {
+    active: [],
+    completed: [],
+    stats: {
+      characterCreated: false,
+      harvests: { tree: 0, water: 0, mountain: 0 },
+      buildingsPlaced: 0,
+      monstersDefeated: 0,
+      treasuresFound: 0
+    }
+  };
+}
+
+function normalizeQuestState(quests) {
+  const defaults = createQuestState();
+  const current = quests || {};
+  return {
+    active: Array.isArray(current.active) ? current.active : [],
+    completed: Array.isArray(current.completed) ? current.completed : [],
+    stats: {
+      ...defaults.stats,
+      ...(current.stats || {}),
+      harvests: { ...defaults.stats.harvests, ...((current.stats && current.stats.harvests) || {}) }
+    }
+  };
 }
 
 function normalizeHeroes(heroes, defaults) {
@@ -171,6 +204,7 @@ export function saveGame() {
   try {
     const d = {
       resources: { ...state.gs.resources },
+      schemaVersion: SCHEMA_VERSION,
       buildings: { ...state.gs.buildings },
       tickCount: state.gs.tickCount,
       claimedCells: { ...state.gs.claimedCells },
@@ -181,6 +215,14 @@ export function saveGame() {
       cooldowns: { ...state.cooldowns },
       player: { r: state.player.r, c: state.player.c },
       character: { ...(state.gs.character || DEFAULT_CHARACTER) },
+      quests: {
+        active: [...(state.gs.quests ? state.gs.quests.active : [])],
+        completed: [...(state.gs.quests ? state.gs.quests.completed : [])],
+        stats: state.gs.quests ? {
+          ...state.gs.quests.stats,
+          harvests: { ...(state.gs.quests.stats.harvests || {}) }
+        } : createQuestState().stats
+      },
       firstHarvest: state.firstHarvest,
       logs: state.gs.logs.slice(-30),
       collectedItems: [...state.gs.collectedItems],

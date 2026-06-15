@@ -4,6 +4,7 @@ import { rf } from './utils.js';
 import { canPlace } from './map.js';
 import { buildCost, canAffordB, meetsReq, upgradeTicks, builderCount } from './buildings.js';
 import { getHeroStats, heroUpgradeCost, computeProd, maxPop, power } from './economy.js';
+import { getQuestProgress, getVisibleQuests } from './quests.js';
 
 // ========== Cell DOM Cache ==========
 // After a full renderMap(), holds direct references to every cell element.
@@ -213,12 +214,30 @@ export function rebuildUI() {
     document.getElementById('statBestiary').textContent = (state.gs.bestiary || []).length + '/7';
     document.getElementById('statAchieve').textContent = (state.gs.achievements && state.gs.achievements.unlocked ? state.gs.achievements.unlocked.length : 0) + '/12';
     document.getElementById('statPrestige').textContent = state.gs.prestige || 0;
+    renderQuestList();
 
     const rec = state.gs.logs.slice(-20).reverse();
     document.getElementById('logList').innerHTML = rec.map(function (l) {
       return '<div class="log-item"><span class="time">' + l.time + '</span>' + l.msg + '</div>';
     }).join('') || '<div class="log-item">等待中...</div>';
   } catch (e) { console.error('rebuildUI error:', e); }
+}
+
+function renderQuestList() {
+  const questList = document.getElementById('questList');
+  if (!questList) return;
+  const quests = getVisibleQuests();
+  if (!quests.length) {
+    questList.innerHTML = '<div class="log-item">暂无任务</div>';
+    return;
+  }
+  questList.innerHTML = quests.map(function (quest) {
+    const progress = Math.min(getQuestProgress(quest), quest.target);
+    const pct = Math.max(0, Math.min(100, (progress / quest.target) * 100));
+    return '<div class="quest-item"><div class="quest-title"><span>' + quest.title + '</span><span>' +
+           progress + '/' + quest.target + '</span></div><div class="quest-desc">' + quest.desc +
+           '</div><div class="quest-progress"><span style="width:' + pct + '%"></span></div></div>';
+  }).join('');
 }
 
 // ========== Upgrade Panel ==========

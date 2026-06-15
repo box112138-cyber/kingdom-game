@@ -5,13 +5,14 @@ import { doTerrainAction, tryMoveBuilding, toggleMoveMode } from './terrain.js';
 import { updateShopSidebar, updateShopDot, cancelPlace } from './shop.js';
 import {
   renderMap, showFloatCard, showTerrainCard, hideFloatCard, showReward,
-  updateSelOverlay, updateCell, updateCells, applyWorkerTransform
+  updateSelOverlay, updateCell, updateCells, applyWorkerTransform, rebuildUI
 } from './renderer.js';
 import { showInterior, hideInterior, moveIntPlayer } from './interiors.js';
 import { resolveCombat } from './combat.js';
 import { trackBuild } from './achievements.js';
 import { startManualCombat } from './match3.js';
 import { markWorldDirty, renderRemotePlayers, updatePresence } from './multiplayer.js';
+import { recordBuildingPlaced, recordMonsterDefeated, recordTreasureFound } from './quests.js';
 
 // ========== Camera / Viewport ==========
 let cachedVW = 0, cachedVH = 0;
@@ -121,6 +122,11 @@ export function handleClick(r, c) {
       updateShopDot();
       document.getElementById('placementHint').classList.remove('show');
       trackBuild();
+      if (recordBuildingPlaced()) {
+        rebuildUI();
+        updateShopSidebar();
+        updateShopDot();
+      }
       updateCells(areaCoords(r, c, sz));
       markWorldDirty();
       return;
@@ -306,6 +312,11 @@ export function setupKeyboard() {
         if (result) {
           updateCell(nr, nc);
           showReward(nr, nc, result.message);
+          if (result.questChanged) {
+            rebuildUI();
+            updateShopSidebar();
+            updateShopDot();
+          }
           hideFloatCard();
           markWorldDirty();
         } else {
@@ -326,6 +337,11 @@ export function setupKeyboard() {
       if (result) {
         updateCell(nr, nc);
         showReward(nr, nc, result.msg);
+        if (result.victory && recordMonsterDefeated()) {
+          rebuildUI();
+          updateShopSidebar();
+          updateShopDot();
+        }
         markWorldDirty();
         if (!result.victory) {
           hideFloatCard();
@@ -344,6 +360,11 @@ export function setupKeyboard() {
       let rt = '+' + gold + 'G';
       if (gems > 0) { state.gs.resources.gems = (state.gs.resources.gems || 0) + gems; rt += ' +' + gems + '💎'; }
       addLog('🎁 发现宝箱！ ' + rt);
+      if (recordTreasureFound()) {
+        rebuildUI();
+        updateShopSidebar();
+        updateShopDot();
+      }
       updateCell(nr, nc);
       showReward(nr, nc, rt);
       markWorldDirty();

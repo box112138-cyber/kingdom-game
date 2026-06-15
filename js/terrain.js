@@ -2,6 +2,7 @@ import { B, CD_WATER, CD_TREE, CD_MOUNT } from './config.js';
 import { state, addLog } from './state.js';
 import { canPlace, clearCells, occupyCells } from './map.js';
 import { trackTree, trackStone, trackFish } from './achievements.js';
+import { recordHarvest } from './quests.js';
 
 // === Terrain Action Definitions ===
 
@@ -66,7 +67,8 @@ export function doTerrainAction(r, c) {
   if (terrain === 'tree') trackTree();
   else if (terrain === 'water') trackFish();
   else if (terrain === 'mountain') trackStone();
-  return { name: act.name, rewards: act.rewards, gemAmt, message: rt.trim() };
+  const questChanged = recordHarvest(terrain);
+  return { name: act.name, rewards: act.rewards, gemAmt, message: rt.trim(), questChanged };
 }
 
 // === Building Move Mode ===

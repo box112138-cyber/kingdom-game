@@ -3,6 +3,7 @@ import { B } from './config.js';
 import { state, addLog } from './state.js';
 import { getHeroStats } from './economy.js';
 import { trackKill } from './achievements.js';
+import { recordMonsterDefeated } from './quests.js';
 
 // === Bestiary tracking ===
 
@@ -139,7 +140,8 @@ export function resolveManualCombat(monsterId, score) {
     const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', gems: '💎' };
     const rewardStr = Object.entries(rewards).map(([k, v]) => '+' + v + (labels[k] || k)).join(' ');
     addLog('🎮 三消击败' + def.name + '！伤害' + dmg + ' ' + rewardStr);
-    return { victory: true, msg: '三消击败' + def.name + '！' + rewardStr };
+    const questChanged = recordMonsterDefeated();
+    return { victory: true, msg: '三消击败' + def.name + '！' + rewardStr, questChanged };
   } else {
     monster.hp -= dmg;
     addLog('🎮 三消对' + def.name + '造成' + dmg + '伤害（剩余HP:' + monster.hp + '）');
