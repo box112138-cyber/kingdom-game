@@ -39,6 +39,19 @@ http://localhost:8787/
 
 公网联机需要把 `server/index.js` 部署到支持 Node.js 和 WebSocket 的平台，例如 Render、Railway、Fly.io 或自己的服务器。GitHub Pages 只能托管静态页面，不能直接运行 WebSocket 服务端；部署后在页面顶部填写对应的 `wss://...` 地址。
 
+### Render 部署联机服务端
+
+项目已包含 `render.yaml`，可以用 Render Blueprint 一键部署：
+
+1. 打开 `https://dashboard.render.com/blueprints`。
+2. 点击 `New Blueprint Instance`。
+3. 连接 GitHub 并选择 `box112138-cyber/kingdom-game` 仓库。
+4. 确认服务名、免费套餐和配置后点击部署。
+5. 部署完成后复制 Render 分配的地址，例如 `https://kingdom-game.onrender.com`。
+6. 游戏页面顶部“联机服务器”填写对应的 WebSocket 地址，例如 `wss://kingdom-game.onrender.com`。
+
+所有玩家填写同一个联机服务器地址和同一个房间名即可跨网络联机。
+
 ## 操作说明
 
 - `WASD` 或方向键：移动角色
