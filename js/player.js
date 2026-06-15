@@ -5,12 +5,13 @@ import { doTerrainAction, tryMoveBuilding, toggleMoveMode } from './terrain.js';
 import { updateShopSidebar, updateShopDot, cancelPlace } from './shop.js';
 import {
   renderMap, showFloatCard, showTerrainCard, hideFloatCard, showReward,
-  updateSelOverlay, updateCell, updateCells
+  updateSelOverlay, updateCell, updateCells, applyWorkerTransform
 } from './renderer.js';
 import { showInterior, hideInterior, moveIntPlayer } from './interiors.js';
 import { resolveCombat } from './combat.js';
 import { trackBuild } from './achievements.js';
 import { startManualCombat } from './match3.js';
+import { markWorldDirty, renderRemotePlayers, updatePresence } from './multiplayer.js';
 
 // ========== Camera / Viewport ==========
 let cachedVW = 0, cachedVH = 0;
@@ -26,6 +27,8 @@ export function applyT() {
   layEl.style.transform = 'translate(' + state.viewPanX + 'px,' + state.viewPanY + 'px) scale(' + state.viewZoom + ')';
   document.getElementById('zoomLabel').textContent = Math.round(state.viewZoom * 100) + '%';
   updatePlayerPos();
+  applyWorkerTransform();
+  renderRemotePlayers();
 }
 
 export function setZ(nz, mx, my) {
@@ -114,6 +117,7 @@ export function handleClick(r, c) {
       document.getElementById('placementHint').classList.remove('show');
       trackBuild();
       updateCells(areaCoords(r, c, sz));
+      markWorldDirty();
       return;
     } else {
       addLog('没有空间！');
@@ -124,6 +128,7 @@ export function handleClick(r, c) {
   if (state.moveMode) {
     tryMoveBuilding(r, c);
     renderMap();
+    markWorldDirty();
     return;
   }
 
@@ -175,6 +180,8 @@ function scheduleCardUpdate() {
     const mc = state.mapData[tr][tc];
     if (mc && mc.buildingId && mc.buildingId !== '__occ__') {
       showFloatCard(mc.buildingId);
+    } else {
+      hideFloatCard();
     }
   }, 250);
 }
@@ -219,6 +226,7 @@ export function setupKeyboard() {
         hideFloatCard();
         showInterior('ruin');
         addLog('进入废墟探索……');
+        markWorldDirty();
         return;
       }
       if (cell.buildingId && cell.buildingId !== '__occ__' && INTERIORS[cell.buildingId]) {
@@ -294,6 +302,7 @@ export function setupKeyboard() {
           updateCell(nr, nc);
           showReward(nr, nc, result.message);
           hideFloatCard();
+          markWorldDirty();
         } else {
           showTerrainCard(nr, nc, cell);
         }
@@ -312,6 +321,7 @@ export function setupKeyboard() {
       if (result) {
         updateCell(nr, nc);
         showReward(nr, nc, result.msg);
+        markWorldDirty();
         if (!result.victory) {
           hideFloatCard();
           return; // can't move into monster cell on defeat
@@ -331,6 +341,7 @@ export function setupKeyboard() {
       addLog('🎁 发现宝箱！ ' + rt);
       updateCell(nr, nc);
       showReward(nr, nc, rt);
+      markWorldDirty();
     }
 
     // Normal movement: no map rebuild, just move player + overlay
@@ -344,6 +355,7 @@ export function setupKeyboard() {
     }
     state.player.r = nr; state.player.c = nc;
     updatePlayerPos();
+    updatePresence();
     followPlayer();
     state.selectedCell = { r: nr, c: nc };
     updateSelOverlay();

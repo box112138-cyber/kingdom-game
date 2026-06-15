@@ -4,7 +4,7 @@
 
 ## 运行方式
 
-项目不需要安装依赖或构建，建议用本地静态服务器运行：
+单机模式不需要安装依赖或构建，建议用本地静态服务器运行：
 
 ```bash
 python -m http.server 8000
@@ -17,6 +17,27 @@ http://localhost:8000/
 ```
 
 不建议直接双击 `index.html`，因为浏览器可能限制 ES Modules 的本地文件加载。
+
+## 联机模式
+
+联机模式使用 WebSocket 房间同步，服务端只负责转发玩家位置和世界快照。第一个进入房间的玩家会把当前世界作为房间初始状态，后续玩家会自动同步到同一张地图和同一份王国进度。
+
+本地联机运行方式：
+
+```bash
+npm install
+npm start
+```
+
+然后访问：
+
+```text
+http://localhost:8787/
+```
+
+页面顶部填写同一个服务器地址和房间名，点击“联机”即可加入同一房间。局域网联机时，把服务器地址改成主机的局域网地址，例如 `ws://192.168.1.20:8787`。
+
+公网联机需要把 `server/index.js` 部署到支持 Node.js 和 WebSocket 的平台，例如 Render、Railway、Fly.io 或自己的服务器。GitHub Pages 只能托管静态页面，不能直接运行 WebSocket 服务端；部署后在页面顶部填写对应的 `wss://...` 地址。
 
 ## 操作说明
 
@@ -34,6 +55,7 @@ http://localhost:8000/
 - `index.html`：页面结构和模块入口
 - `css/style.css`：游戏界面样式
 - `js/main.js`：初始化、读档、事件绑定和主循环
+- `js/multiplayer.js`：联机连接、房间同步、远程玩家显示
 - `js/state.js`：集中式游戏状态和存档写入
 - `js/config.js`：地图尺寸、建筑、怪物和内部场景配置
 - `js/map.js`：地形生成、建筑占格、宝箱、怪物和废墟生成
@@ -47,6 +69,7 @@ http://localhost:8000/
 - `js/match3.js`：动物消消乐小游戏
 - `js/interiors.js`：建筑和废墟内部探索
 - `js/achievements.js`：成就计数、解锁和奖励
+- `server/index.js`：静态文件和 WebSocket 房间服务
 
 ## 存档
 

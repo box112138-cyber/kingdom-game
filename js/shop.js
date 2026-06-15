@@ -1,7 +1,7 @@
 import { B } from './config.js';
 import { state, addLog } from './state.js';
 import { canPlace, occupyCells, clearCells } from './map.js';
-import { canAffordB, meetsReq } from './buildings.js';
+import { buildCost, canAffordB, meetsReq } from './buildings.js';
 import { rf } from './utils.js';
 
 // === Shop Toggle ===
@@ -96,7 +96,7 @@ export function updateBuildShop() {
 export function buyBuilding(bid) {
   const def = B[bid];
   if (!canAffordB(bid, 1)) return;
-  const cost = def.baseCost;
+  const cost = buildCost(bid, 1);
   for (const k in cost) state.gs.resources[k] -= cost[k];
   if (!state.gs.inventory) state.gs.inventory = {};
   state.gs.inventory[bid] = (state.gs.inventory[bid] || 0) + 1;

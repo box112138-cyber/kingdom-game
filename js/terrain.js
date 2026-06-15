@@ -27,7 +27,8 @@ const ACTIONS = {
 
 export function doTerrainAction(r, c) {
   const cell = state.mapData[r][c];
-  const act = ACTIONS[cell.terrain];
+  const terrain = cell.terrain;
+  const act = ACTIONS[terrain];
   if (!act) return null;
 
   const key = r + ',' + c;
@@ -62,9 +63,9 @@ export function doTerrainAction(r, c) {
 
   addLog(act.name + ': ' + rt.trim());
   // Achievement tracking
-  if (cell.terrain === 'tree') trackTree();
-  else if (cell.terrain === 'water') trackFish();
-  else if (cell.terrain === 'mountain') trackStone();
+  if (terrain === 'tree') trackTree();
+  else if (terrain === 'water') trackFish();
+  else if (terrain === 'mountain') trackStone();
   return { name: act.name, rewards: act.rewards, gemAmt, message: rt.trim() };
 }
 

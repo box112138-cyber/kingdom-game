@@ -40,6 +40,44 @@ body {
 
 .header h1 { font-size: 22px; color: var(--gold); letter-spacing: 4px; }
 
+.online-bar {
+  margin: 6px auto 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.online-bar input {
+  width: 150px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  outline: none;
+}
+
+.online-bar input#onlineRoom,
+.online-bar input#onlineName { width: 90px; }
+
+.online-bar button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--gold-dark);
+  background: var(--card);
+  color: var(--gold);
+  cursor: pointer;
+}
+
+.online-bar button:disabled { opacity: 0.45; cursor: default; }
+
+#onlineStatus { color: var(--text-dim); }
+
+#onlineStatus.connected { color: var(--green); }
+
 .resources {
   display: flex;
   flex-wrap: wrap;
@@ -732,11 +770,17 @@ body {
   z-index: 60;
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
-  transition: left 0.3s, top 0.3s;
+  transition: left 0.08s linear, top 0.08s linear;
   line-height: 1;
 }
 
-#workers { pointer-events: none; }
+#workers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
 
 /* Upgrade panel */
 .upgrade-panel {
@@ -799,6 +843,32 @@ body {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
   line-height: 1;
   transform: translate(-50%, -50%);
+}
+
+.remote-player {
+  position: absolute;
+  z-index: 49;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.remote-avatar {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.remote-name {
+  display: block;
+  margin-top: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--blue);
+  font-size: 9px;
+  white-space: nowrap;
 }
 
 #selOverlay {

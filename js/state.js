@@ -39,7 +39,21 @@ export const state = {
   intPlayer: null,
 
   // Map render cache
-  altCache: new Map()
+  altCache: new Map(),
+
+  // Workers
+  workers: [],
+  _workerIdCounter: 0,
+
+  // Multiplayer
+  online: {
+    connected: false,
+    room: '',
+    playerId: '',
+    name: '',
+    role: 'offline',
+    peers: new Map()
+  }
 };
 
 export const MIN_Z = 0.08;

@@ -7,12 +7,23 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div class="header"><h1>王国崛起</h1></div>
+<div class="header">
+  <h1>王国崛起</h1>
+  <div class="online-bar" id="onlineBar">
+    <input id="onlineServer" type="text" placeholder="ws://localhost:8787" autocomplete="off">
+    <input id="onlineRoom" type="text" placeholder="房间名" autocomplete="off" maxlength="24">
+    <input id="onlineName" type="text" placeholder="昵称" autocomplete="off" maxlength="12">
+    <button id="onlineConnect">联机</button>
+    <button id="onlineDisconnect" disabled>断开</button>
+    <span id="onlineStatus">单机模式</span>
+  </div>
+</div>
 <div class="resources" id="resources"></div>
 <div class="main-area">
   <div class="map-viewport" id="mapViewport">
     <div class="map-layer" id="mapLayer"></div>
     <div id="player">🧑</div>
+    <div id="remotePlayers"></div>
     <div id="selOverlay"></div>
     <div id="workers"></div>
     <div class="upgrade-panel" id="upgradePanel"></div>

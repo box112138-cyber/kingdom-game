@@ -18,7 +18,7 @@ import { toggleGame, handleGameClick, showHint, GM } from './match3.js';
 import {
   renderMap, rebuildUI, renderUpgradePanel,
   showFloatCard, hideFloatCard, showReward, spawnWorker,
-  updateCell
+  updateCell, updateWorkers, applyWorkerTransform
 } from './renderer.js';
 import {
   applyT, setZ, zoomIn, zoomOut, zoomReset, focusOnCastle,
@@ -26,6 +26,7 @@ import {
   setupKeyboard, setupViewport, setupFloatCardDrag, setupMoveToggle
 } from './player.js';
 import { showInterior, hideInterior } from './interiors.js';
+import { initMultiplayer, markWorldDirty, updatePresence } from './multiplayer.js';
 
 // ========== Match-3 Score Conversion ==========
 
@@ -45,6 +46,7 @@ function convertMatchScore() {
   state.gs.resources.gems = (state.gs.resources.gems || 0) + gems;
   if (gold > 0) {
     addLog('🎮 消消乐得分 ' + GM.score + ' -> +' + gold + 'G' + (gems > 0 ? ' +' + gems + '💎' : ''));
+    markWorldDirty();
   }
   GM.score = 0;
 }
@@ -96,27 +98,12 @@ function loadGame() {
       state.gs.claimedCells = state.gs.claimedCells || {};
       state.gs.bPositions = state.gs.bPositions || {};
       state.gs.trainQueue = state.gs.trainQueue || { count: 0, total: 0, ticks: 0, level: 1 };
-      state.gs.heroes = state.gs.heroes || { barbarianKing: { level: 1     }
-  }
-
-  // Defense waves: every 600 ticks (60s), with warning
-  const watchL = state.gs.buildings.watchtower || 0;
-  const alertOffset = watchL > 0 ? 100 * watchL : 100; // watchtower gives earlier warning
-  if (state.gs.tickCount % 600 === 600 - alertOffset) {
-    addLog('⚠️ 警报：怪物即将来袭！' + (alertOffset / 10).toFixed(0) + '秒后到达');
-  }
-  if (state.gs.tickCount % 600 === 0 && state.gs.tickCount > 0) {
-    const waveSize = 2 + Math.floor(state.gs.tickCount / 6000); // increases over time
-    genWaveMonsters(waveSize);
-    addLog('⚔️ 第' + Math.floor(state.gs.tickCount / 600) + '波怪物来袭！(' + waveSize + '只)');
-    renderMap();
-  };
+      state.gs.heroes = state.gs.heroes || { barbarianKing: { level: 1, equipment: { weapon: null, armor: null, ring: null } } };
       state.gs.walls = state.gs.walls || 0;
       state.gs.resources.gems = state.gs.resources.gems || 0;
       state.gs.upgradeQueue = state.gs.upgradeQueue || [];
       state.gs.collectedItems = state.gs.collectedItems || [];
       state.gs.inventory = state.gs.inventory || {};
-      state.gs.upgradeQueue = state.gs.upgradeQueue || [];
       state.gs.treasures = state.gs.treasures || [];
       state.gs.monsters = state.gs.monsters || [];
       state.gs.bestiary = state.gs.bestiary || [];
@@ -153,6 +140,7 @@ function resetGame() {
   state.cooldowns = {};
   state.firstHarvest = true;
   document.getElementById('workers').innerHTML = '';
+  state.workers = [];
   localStorage.removeItem('kingdom_v13');
   fullGenMap();
   placeBuildings();
@@ -172,6 +160,7 @@ function resetGame() {
   updateShopSidebar();
   updateShopDot();
   addLog('已重置');
+  markWorldDirty();
 }
 
 // ========== Prestige ==========
@@ -182,14 +171,14 @@ function doPrestige() {
 
   const keepGems = Math.floor((state.gs.resources.gems || 0) * 0.3);
   const keepHero = { ...state.gs.heroes };
-  state.gs.prestige = (state.gs.prestige || 0) + 1;
+  const nextPrestige = (state.gs.prestige || 0) + 1;
 
   // Reset state
   state.gs = createState();
   initBuildings(state.gs);
   state.gs.resources.gems = keepGems;
   state.gs.heroes = keepHero;
-  state.gs.prestige = state.gs.prestige;
+  state.gs.prestige = nextPrestige;
 
   state.selectedCell = null;
   state.moveMode = false;
@@ -198,6 +187,7 @@ function doPrestige() {
   state.cooldowns = {};
   state.firstHarvest = true;
   document.getElementById('workers').innerHTML = '';
+  state.workers = [];
 
   fullGenMap();
   placeBuildings();
@@ -214,6 +204,7 @@ function doPrestige() {
   updateShopSidebar();
   updateShopDot();
   addLog('✨ 转生成功！威望等级 ' + state.gs.prestige + '（+5%产出加成）');
+  markWorldDirty();
 }
 
 // ========== Float Card Button Click ==========
@@ -234,6 +225,7 @@ function fcBtnClick() {
       state.gs.resources.gold -= 50;
       addLog('声明了领地 (' + state.selectedCell.r + ',' + state.selectedCell.c + ')');
       updateCell(state.selectedCell.r, state.selectedCell.c);
+      markWorldDirty();
       hideFloatCard();
     }
   } else if (state.fcBid && state.fcBid.length === 1) {
@@ -243,6 +235,7 @@ function fcBtnClick() {
         updateCell(state.selectedCell.r, state.selectedCell.c);
         showReward(state.selectedCell.r, state.selectedCell.c, result.message);
         hideFloatCard();
+        markWorldDirty();
       }
     }
   } else if (state.fcBid) {
@@ -252,6 +245,7 @@ function fcBtnClick() {
       spawnWorker(state.fcBid);
       renderUpgradePanel();
       renderMap();
+      markWorldDirty();
       hideFloatCard();
     }
   }
@@ -263,6 +257,14 @@ function tick() {
   state.gs.tickCount++;
   tickTraining();
   const completed = processUpgrades();
+
+  for (const q of completed) {
+    if (q.workerId != null) {
+      const w = state.workers.find(wk => wk.workerId === q.workerId);
+      if (w) w.phase = w.phase === 'toBuild' ? 'toHut' : 'toHut';
+    }
+  }
+  updateWorkers();
 
   const prod = computeProd();
   const ad = (k, a, m) => {
@@ -298,6 +300,18 @@ function tick() {
   if (state.gs.tickCount % 6000 === 0 && state.gs.tickCount > 0) {
     addLog(isNight() ? '🌙 夜幕降临……' : '☀️ 天亮了！');
   }
+  // Defense waves: every 600 ticks (60s), with warning
+  const watchL = state.gs.buildings.watchtower || 0;
+  const alertOffset = watchL > 0 ? 100 * watchL : 100;
+  if (state.gs.tickCount % 600 === 600 - alertOffset) {
+    addLog('⚠️ 警报：怪物即将来袭！' + (alertOffset / 10).toFixed(0) + '秒后到达');
+  }
+  if (state.gs.tickCount % 600 === 0 && state.gs.tickCount > 0) {
+    const waveSize = 2 + Math.floor(state.gs.tickCount / 6000);
+    genWaveMonsters(waveSize);
+    addLog('⚔️ 第' + Math.floor(state.gs.tickCount / 600) + '波怪物来袭！(' + waveSize + '只)');
+    renderMap();
+  }
   // soldiers consume food
   const soldiers = state.gs.resources.soldiers || 0;
   if (soldiers > 0) {
@@ -317,6 +331,7 @@ function tick() {
     rebuildUI();
     updateShopSidebar();
     updateShopDot();
+    markWorldDirty();
   }
 
   if (state.gs.tickCount % 10 === 0) {
@@ -388,6 +403,7 @@ function setupButtons() {
     updateShopSidebar();
     updateShopDot();
     renderMap();
+    markWorldDirty();
   });
   document.getElementById('fcEnter').addEventListener('click', function () {
     const bid = state.fcBid;
@@ -413,6 +429,7 @@ function setupButtons() {
     state.gs.walls += state.buyQty;
     addLog('购买了' + state.buyQty + '个城墙');
     updateShopSidebar();
+    markWorldDirty();
   });
 
   // Dynamic shop content (event delegation)
@@ -421,9 +438,9 @@ function setupButtons() {
     if (!btn) return;
     const action = btn.dataset.action;
     const bid = btn.dataset.bid;
-    if (action === 'buy') buyBuilding(bid);
+    if (action === 'buy') { buyBuilding(bid); markWorldDirty(); }
     else if (action === 'place') placeBuilding(bid);
-    else if (action === 'cancelPlace') { e.preventDefault(); cancelPlace(); }
+    else if (action === 'cancelPlace') { e.preventDefault(); cancelPlace(); markWorldDirty(); }
   });
 
   // Match-3 grid click (event delegation)
@@ -462,12 +479,14 @@ function startGame() {
   }
   updatePlayerPos();
   focusOnCastle();
+  applyWorkerTransform();
 
   setupButtons();
   setupKeyboard();
   setupViewport();
   setupFloatCardDrag();
   setupMoveToggle();
+  initMultiplayer();
 
   renderMap();
   rebuildUI();
@@ -486,6 +505,7 @@ function startGame() {
   setInterval(tick, 100);
   setInterval(saveGame, 30000);
   setInterval(updateResourceBar, 1000);
+  setInterval(function () { markWorldDirty(); updatePresence(); }, 5000);
 }
 
 window.addEventListener('DOMContentLoaded', startGame);

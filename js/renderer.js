@@ -239,34 +239,80 @@ export function renderUpgradePanel() {
 
 // ========== Worker Animation ==========
 
+const WORKER_SPEED = 1.5; // grid units per tick (100ms)
+
 export function spawnWorker(bid) {
   const pos = state.bPos[bid];
   if (!pos) return;
 
-  let sx = 60, sy = 60;
+  let hutR = 1, hutC = 1;
   for (const k of Object.keys(state.bPos)) {
     if (k.startsWith('builderHut')) {
       const hut = state.bPos[k];
-      sx = (hut.c * CS + CS / 2) * state.viewZoom + state.viewPanX;
-      sy = (hut.r * CS + CS / 2) * state.viewZoom + state.viewPanY;
+      hutR = hut.r; hutC = hut.c;
       break;
     }
   }
 
-  const ex = (pos.c * CS + CS / 2) * state.viewZoom + state.viewPanX;
-  const ey = (pos.r * CS + CS / 2) * state.viewZoom + state.viewPanY;
+  const workerId = ++state._workerIdCounter;
+  const lastQ = state.gs.upgradeQueue[state.gs.upgradeQueue.length - 1];
+  if (lastQ && lastQ.bid === bid) lastQ.workerId = workerId;
 
   const el = document.createElement('div');
   el.className = 'worker';
   el.textContent = '🧑‍🔧';
-  el.style.left = sx + 'px';
-  el.style.top = sy + 'px';
+  el.style.left = (hutC * CS + CS / 2) + 'px';
+  el.style.top = (hutR * CS + CS / 2) + 'px';
   document.getElementById('workers').appendChild(el);
-  requestAnimationFrame(() => {
-    el.style.left = ex + 'px';
-    el.style.top = ey + 'px';
+
+  state.workers.push({
+    bid, workerId, el,
+    hutR, hutC,
+    buildR: pos.r, buildC: pos.c,
+    curR: hutR + 0.5, curC: hutC + 0.5,
+    phase: 'toBuild'
   });
-  return el;
+}
+
+export function applyWorkerTransform() {
+  const wEl = document.getElementById('workers');
+  if (!wEl) return;
+  wEl.style.transform = 'translate(' + state.viewPanX + 'px,' + state.viewPanY + 'px) scale(' + state.viewZoom + ')';
+}
+
+export function updateWorkers() {
+  for (let i = state.workers.length - 1; i >= 0; i--) {
+    const w = state.workers[i];
+
+    let tx, ty;
+    if (w.phase === 'toBuild') {
+      tx = w.buildC + 0.5; ty = w.buildR + 0.5;
+    } else if (w.phase === 'toHut') {
+      tx = w.hutC + 0.5; ty = w.hutR + 0.5;
+    } else {
+      continue; // waiting
+    }
+
+    const dx = tx - w.curC, dy = ty - w.curR;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.1) {
+      w.curC = tx; w.curR = ty;
+      w.el.style.left = (w.curC * CS) + 'px';
+      w.el.style.top = (w.curR * CS) + 'px';
+      w.phase = w.phase === 'toBuild' ? 'waiting' : 'remove';
+    } else {
+      const step = Math.min(dist, WORKER_SPEED);
+      w.curC += (dx / dist) * step;
+      w.curR += (dy / dist) * step;
+      w.el.style.left = (w.curC * CS) + 'px';
+      w.el.style.top = (w.curR * CS) + 'px';
+    }
+
+    if (w.phase === 'remove') {
+      w.el.remove();
+      state.workers.splice(i, 1);
+    }
+  }
 }
 
 // ========== Float Card ==========
