@@ -1,10 +1,21 @@
 import { state, INTERIORS, addLog } from './state.js';
 import { createInteriors } from './config.js';
+import { addSoldiers } from './economy.js';
 
 // Get items visible at current castle level
 function visibleItems(cfg) {
   const cl = state.gs.buildings.castle || 1;
   return cfg.items.filter(it => (it.minLevel || 1) <= cl);
+}
+
+function itemKey(bid, r, c) {
+  return bid + ':' + r + ',' + c;
+}
+
+function hasCollected(collected, bid, r, c) {
+  const key = itemKey(bid, r, c);
+  const legacyKey = r + ',' + c;
+  return collected.includes(key) || (bid === 'castle' && collected.includes(legacyKey));
 }
 
 // === Show/Hide Interior ===
@@ -48,8 +59,7 @@ export function renderInterior() {
       } else if (cfg.door[0] === r && cfg.door[1] === c) {
         cls += ' door';
       } else {
-        const key = r + ',' + c;
-        if (!collected.includes(key)) {
+        if (!hasCollected(collected, state.interiorBid, r, c)) {
           const it = visibleItems(cfg).find(i => i.r === r && i.c === c);
           if (it) { content = it.e; uncollected++; }
         }
@@ -66,7 +76,7 @@ export function renderInterior() {
   // Update title to show remaining count
   const items = visibleItems(cfg);
   const total = items.length;
-  const remaining = total - collected.filter(k => items.some(i => (i.r + ',' + i.c) === k)).length;
+  const remaining = total - items.filter(i => hasCollected(collected, state.interiorBid, i.r, i.c)).length;
   document.getElementById('intTitle').textContent =
     cfg.name + ' (' + remaining + '/' + total + ')';
 }
@@ -85,8 +95,8 @@ export function moveIntPlayer(dr, dc) {
   state.intPlayer.c = nc;
 
   // Check for item at new position
-  const key = nr + ',' + nc;
-  if (!state.gs.collectedItems.includes(key)) {
+  const key = itemKey(state.interiorBid, nr, nc);
+  if (!hasCollected(state.gs.collectedItems, state.interiorBid, nr, nc)) {
     const it = visibleItems(cfg).find(i => i.r === nr && i.c === nc);
     if (it && it.reward) {
       collectItem(it, key, cfg);
@@ -108,9 +118,10 @@ function collectItem(item, key, cfg) {
   // Grant rewards
   const rewards = [];
   for (const [k, v] of Object.entries(item.reward)) {
-    state.gs.resources[k] = (state.gs.resources[k] || 0) + v;
+    const gained = k === 'soldiers' ? addSoldiers(v) : v;
+    if (k !== 'soldiers') state.gs.resources[k] = (state.gs.resources[k] || 0) + v;
     const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', soldiers: '兵', gems: '💎' };
-    rewards.push('+' + v + (labels[k] || k));
+    rewards.push('+' + gained + (labels[k] || k));
   }
 
   state.gs.collectedItems.push(key);
@@ -122,9 +133,7 @@ function collectItem(item, key, cfg) {
   // Check completion
   const items = visibleItems(cfg);
   const total = items.length;
-  const remaining = total - state.gs.collectedItems.filter(
-    k => items.some(i => (i.r + ',' + i.c) === k)
-  ).length;
+  const remaining = total - items.filter(i => hasCollected(state.gs.collectedItems, state.interiorBid, i.r, i.c)).length;
   if (remaining === 0) {
     addLog('🏰 城堡内部已探索完毕！');
     setTimeout(() => showInteriorToast('🏰 探索完毕！'), 500);

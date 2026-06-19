@@ -254,24 +254,35 @@ export function genWaveMonsters(count) {
   if (!state.gs.monsters) state.gs.monsters = [];
   const types = ['wolf', 'serpent', 'golem', 'bandit'];
   let id = Date.now();
+  const spawned = [];
+  const directions = ['北方', '南方', '西侧', '东侧'];
   for (let i = 0; i < count; i++) {
     const type = types[Math.floor(Math.random() * types.length)];
     const def = MONSTERS[type];
-    // Spawn at a random edge
-    let r, c;
-    const edge = Math.floor(Math.random() * 4);
-    switch (edge) {
-      case 0: r = 0; c = Math.floor(Math.random() * MC); break;
-      case 1: r = MR - 1; c = Math.floor(Math.random() * MC); break;
-      case 2: r = Math.floor(Math.random() * MR); c = 0; break;
-      case 3: r = Math.floor(Math.random() * MR); c = MC - 1; break;
-    }
-    // Ensure cell is valid (not water, no building)
-    if (state.mapData[r] && state.mapData[r][c] &&
-        state.mapData[r][c].terrain !== 'water' &&
-        !state.mapData[r][c].buildingId &&
-        !state.mapData[r][c].wall) {
-      state.gs.monsters.push({ id: id++, type, r, c, alive: true, hp: def.hp, wave: true });
+    const edge = i % 4;
+    let placed = false;
+    for (let tries = 0; tries < 40 && !placed; tries++) {
+      let r, c;
+      switch (edge) {
+        case 0: r = 0; c = Math.floor(Math.random() * MC); break;
+        case 1: r = MR - 1; c = Math.floor(Math.random() * MC); break;
+        case 2: r = Math.floor(Math.random() * MR); c = 0; break;
+        case 3: r = Math.floor(Math.random() * MR); c = MC - 1; break;
+      }
+      if (state.mapData[r] && state.mapData[r][c] &&
+          state.mapData[r][c].terrain !== 'water' &&
+          !state.mapData[r][c].buildingId &&
+          !state.mapData[r][c].wall) {
+        const monster = { id: id++, type, r, c, alive: true, hp: def.hp, wave: true, edge };
+        state.gs.monsters.push(monster);
+        spawned.push(monster);
+        placed = true;
+      }
     }
   }
+  return {
+    spawned,
+    count: spawned.length,
+    directions: [...new Set(spawned.map(m => directions[m.edge]))]
+  };
 }

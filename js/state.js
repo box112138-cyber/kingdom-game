@@ -88,6 +88,7 @@ export function createState() {
     ruins: [],
     prestige: 0,
     character: { ...DEFAULT_CHARACTER },
+    daily: { lastClaim: '', streak: 0 },
     quests: createQuestState(),
     achievements: { trees: 0, stone: 0, fish: 0, kills: 0, buildings: 0, unlocked: [] }
   };
@@ -113,6 +114,7 @@ export function normalizeGameState(saved) {
   current.ruins = current.ruins || [];
   current.prestige = current.prestige || 0;
   current.character = normalizeStoredCharacter(current.character);
+  current.daily = normalizeDaily(current.daily, defaults.daily);
   current.quests = normalizeQuestState(current.quests);
   current.achievements = {
     ...defaults.achievements,
@@ -176,6 +178,14 @@ function normalizeStoredCharacter(character) {
   };
 }
 
+function normalizeDaily(daily, defaults) {
+  const current = daily || {};
+  return {
+    lastClaim: typeof current.lastClaim === 'string' ? current.lastClaim : defaults.lastClaim,
+    streak: Math.max(0, Number.parseInt(current.streak, 10) || 0)
+  };
+}
+
 export function initBuildings(s) {
   for (const id of ['castle', 'farm', 'mine']) {
     if (s.buildings[id] == null) s.buildings[id] = 1;
@@ -215,6 +225,7 @@ export function saveGame() {
       cooldowns: { ...state.cooldowns },
       player: { r: state.player.r, c: state.player.c },
       character: { ...(state.gs.character || DEFAULT_CHARACTER) },
+      daily: { ...(state.gs.daily || { lastClaim: '', streak: 0 }) },
       quests: {
         active: [...(state.gs.quests ? state.gs.quests.active : [])],
         completed: [...(state.gs.quests ? state.gs.quests.completed : [])],

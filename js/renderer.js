@@ -3,7 +3,7 @@ import { state, INTERIORS, isClaimed, addLog } from './state.js';
 import { rf } from './utils.js';
 import { canPlace } from './map.js';
 import { buildCost, canAffordB, meetsReq, upgradeTicks, builderCount } from './buildings.js';
-import { getHeroStats, heroUpgradeCost, computeProd, maxPop, power } from './economy.js';
+import { gemCap, getHeroStats, heroUpgradeCost, computeProd, foodCap, goldCap, maxPop, power, stoneCap, trainCost, trainTime, woodCap } from './economy.js';
 import { getQuestProgress, getVisibleQuests } from './quests.js';
 
 // ========== Cell DOM Cache ==========
@@ -199,9 +199,11 @@ export function rebuildUI() {
     ];
     document.getElementById('resources').innerHTML = rl.map(function (r) {
       const v = state.gs.resources[r.k] || 0, rt = prod[r.k] || 0;
+      const cap = resourceCap(r.k);
+      const valueText = cap ? rf(v) + '/' + rf(cap) : rf(v);
       return '<div class="res-item"><div class="res-icon">' + r.i +
              '</div><div class="res-info"><span class="res-name">' + r.n +
-             '</span><span class="res-value" style="color:' + r.c + '">' + rf(v) +
+             '</span><span class="res-value" style="color:' + r.c + '">' + valueText +
              '</span><span class="res-rate">' + (rt > 0 ? '+' + rt.toFixed(1) + '/s' : '0/s') +
              '</span></div></div>';
     }).join('');
@@ -210,6 +212,7 @@ export function rebuildUI() {
     document.getElementById('statClaimed').textContent = Object.keys(state.gs.claimedCells).length;
     document.getElementById('statPopCap').textContent = maxPop();
     document.getElementById('statPower').textContent = power();
+    document.getElementById('statThreats').textContent = countWaveThreats();
     document.getElementById('statGps').textContent = prod.gold.toFixed(1);
     document.getElementById('statBestiary').textContent = (state.gs.bestiary || []).length + '/7';
     document.getElementById('statAchieve').textContent = (state.gs.achievements && state.gs.achievements.unlocked ? state.gs.achievements.unlocked.length : 0) + '/12';
@@ -221,6 +224,20 @@ export function rebuildUI() {
       return '<div class="log-item"><span class="time">' + l.time + '</span>' + l.msg + '</div>';
     }).join('') || '<div class="log-item">等待中...</div>';
   } catch (e) { console.error('rebuildUI error:', e); }
+}
+
+function countWaveThreats() {
+  return (state.gs.monsters || []).filter(m => m.alive && m.wave).length;
+}
+
+export function resourceCap(key) {
+  if (key === 'gold') return goldCap();
+  if (key === 'food') return foodCap();
+  if (key === 'stone') return stoneCap();
+  if (key === 'wood') return woodCap();
+  if (key === 'gems') return gemCap();
+  if (key === 'soldiers') return maxPop();
+  return 0;
 }
 
 function renderQuestList() {
@@ -308,6 +325,23 @@ export function updateWorkers() {
       tx = w.buildC + 0.5; ty = w.buildR + 0.5;
     } else if (w.phase === 'toHut') {
       tx = w.hutC + 0.5; ty = w.hutR + 0.5;
+    } else if (bid === 'barracks') {
+      const trainCount = Math.min(5, Math.max(0, Math.floor(maxPop() - (state.gs.resources.soldiers || 0))));
+      const queue = state.gs.trainQueue || { total: 0 };
+      const train = trainCost(Math.max(1, trainCount));
+      document.getElementById('fcStats').textContent = '士兵 ' + Math.floor(state.gs.resources.soldiers || 0) + '/' + maxPop() + ' | 每批最多训练5名';
+      const btn = document.getElementById('fcBtn'), cst = document.getElementById('fcCost');
+      if (queue.total > 0) {
+        btn.style.display = 'none';
+        cst.textContent = '训练中 ' + queue.count + '/' + queue.total;
+      } else if (trainCount <= 0) {
+        btn.style.display = 'none';
+        cst.textContent = '人口已满，升级城堡或建造酒馆/装饰提高人口';
+      } else {
+        btn.textContent = '训练士兵 x' + trainCount + ' (' + (trainTime(trainCount) / 10).toFixed(1) + 's)';
+        cst.innerHTML = (state.gs.resources.food >= train.food ? train.food + 'F' : '<span style="color:var(--red)">' + train.food + 'F</span>');
+        btn.style.display = 'block';
+      }
     } else {
       continue; // waiting
     }
@@ -381,17 +415,35 @@ export function showFloatCard(bid) {
       if (p.gold) ls.push('金币+' + p.gold.toFixed(1) + '/s');
       if (p.food) ls.push('粮食+' + p.food.toFixed(1) + '/s');
       if (p.stone) ls.push('石料+' + p.stone.toFixed(1) + '/s');
+      if (p.wood) ls.push('木材+' + p.wood.toFixed(1) + '/s');
+      if (p.soldiers) ls.push('士兵+' + p.soldiers.toFixed(2) + '/s');
+      if (p.gems) ls.push('宝石+' + p.gems.toFixed(2) + '/s');
       if (e.mp) ls.push('人口上限+' + e.mp);
       if (e.gsb) ls.push('金币上限+' + e.gsb);
       if (e.fsb) ls.push('粮食上限+' + e.fsb);
+      if (e.cavalryPower) ls.push('战力+' + e.cavalryPower);
+      if (e.soldierPower) ls.push('士兵战力x' + e.soldierPower.toFixed(2));
+      if (e.heroAtk) ls.push('英雄攻击+' + e.heroAtk);
+      if (e.heroDef) ls.push('英雄防御+' + e.heroDef);
+      if (e.trainSpeed) ls.push('训练加速+' + Math.round(e.trainSpeed * 100) + '%');
       document.getElementById('fcStats').textContent = ls.join(' | ');
 
       const btn = document.getElementById('fcBtn'), cst = document.getElementById('fcCost');
       const upgrading = state.gs.upgradeQueue.some(q => q.bid === bid);
       const bc = builderCount();
       const busy = state.gs.upgradeQueue.length >= bc;
+      const trainRoom = bid === 'barracks' ? Math.min(5, Math.max(0, Math.floor(maxPop() - (state.gs.resources.soldiers || 0)))) : 0;
+      const training = bid === 'barracks' && state.gs.trainQueue && state.gs.trainQueue.total > 0;
 
-      if (upgrading) {
+      if (bid === 'barracks' && training) {
+        btn.style.display = 'none';
+        cst.textContent = '训练中 ' + state.gs.trainQueue.count + '/' + state.gs.trainQueue.total;
+      } else if (bid === 'barracks' && trainRoom > 0) {
+        const train = trainCost(trainRoom);
+        cst.innerHTML = (state.gs.resources.food >= train.food ? train.food + 'F' : '<span style="color:var(--red)">' + train.food + 'F</span>');
+        btn.textContent = '训练士兵 x' + trainRoom + ' (' + (trainTime(trainRoom) / 10).toFixed(1) + 's)';
+        btn.style.display = 'block';
+      } else if (upgrading) {
         btn.style.display = 'none';
         cst.textContent = '升级中...';
       } else if (busy) {

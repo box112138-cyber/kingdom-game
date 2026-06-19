@@ -1,7 +1,7 @@
 import { MONSTERS } from './config.js';
 import { B } from './config.js';
 import { state, addLog } from './state.js';
-import { getHeroStats } from './economy.js';
+import { addSoldiers, getHeroStats } from './economy.js';
 import { trackKill } from './achievements.js';
 import { recordMonsterDefeated } from './quests.js';
 
@@ -48,6 +48,18 @@ function addToBestiary(monsterType) {
       addLog('👑 图鉴完成：已击败全部 Boss！ +200💎');
     }
   }
+}
+
+function grantRewards(rewards) {
+  const actual = {};
+  for (const [key, value] of Object.entries(rewards)) {
+    if (key === 'soldiers') actual[key] = addSoldiers(value);
+    else {
+      state.gs.resources[key] = (state.gs.resources[key] || 0) + value;
+      actual[key] = value;
+    }
+  }
+  return actual;
 }
 
 // === Combat Resolution ===
@@ -103,21 +115,18 @@ export function resolveCombat(monsterId) {
       state.gs.resources.soldiers = Math.max(0, soldiers - soldierLoss);
     }
     // Grant rewards
-    const rewards = { ...def.reward };
-    for (const [k, v] of Object.entries(rewards)) {
-      state.gs.resources[k] = (state.gs.resources[k] || 0) + v;
-    }
+    const rewards = grantRewards({ ...def.reward });
     const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', gems: '💎' };
     const rewardStr = Object.entries(rewards).map(([k, v]) => '+' + v + (labels[k] || k)).join(' ');
     const lossStr = soldierLoss > 0 ? ' 阵亡' + soldierLoss + '兵' : '';
     addLog('⚔️ 击败' + def.name + '！ ' + rewardStr + lossStr);
     return { victory: true, msg: '击败' + def.name + '！' + rewardStr + lossStr, rewards };
   } else {
-    // Defeat: lose soldiers but monster survives (player pushed back)
+    monster.hp = Math.max(1, monster.hp - dmgToMonster);
     const loss = Math.max(1, Math.floor(soldiers * 0.2));
     state.gs.resources.soldiers = Math.max(0, soldiers - loss);
-    addLog('💀 不敌' + def.name + '，损失' + loss + '兵');
-    return { victory: false, msg: '不敌' + def.name + '，损失' + loss + '兵', rewards: {} };
+    addLog('💀 击伤' + def.name + '，剩余HP:' + monster.hp + '，损失' + loss + '兵');
+    return { victory: false, msg: '击伤' + def.name + ' 剩余HP:' + monster.hp + ' 损失' + loss + '兵', rewards: {} };
   }
 }
 
@@ -133,10 +142,7 @@ export function resolveManualCombat(monsterId, score) {
     addToBestiary(monster.type);
     trackKill();
     if (def.boss) dropEquipment(monster.type);
-    const rewards = { ...def.reward };
-    for (const [k, v] of Object.entries(rewards)) {
-      state.gs.resources[k] = (state.gs.resources[k] || 0) + v;
-    }
+    const rewards = grantRewards({ ...def.reward });
     const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', gems: '💎' };
     const rewardStr = Object.entries(rewards).map(([k, v]) => '+' + v + (labels[k] || k)).join(' ');
     addLog('🎮 三消击败' + def.name + '！伤害' + dmg + ' ' + rewardStr);

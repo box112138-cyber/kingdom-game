@@ -38,14 +38,16 @@ export function doTerrainAction(r, c) {
   let rt = '';
   const ic = { gold: 'G', food: 'F', wood: 'W', stone: 'S', gems: '💎' };
 
+  let rewards = { ...act.rewards };
+
   // Port fishing bonus
   const portL = state.gs.buildings.port || 0;
   if (portL > 0 && cell.terrain === 'water') {
-    const bonus = Math.floor(act.rewards.food * B.port.effects(portL).fishBonus);
-    act.rewards = { ...act.rewards, food: act.rewards.food + bonus };
+    const bonus = Math.floor(rewards.food * B.port.effects(portL).fishBonus);
+    rewards = { ...rewards, food: rewards.food + bonus };
   }
 
-  for (const [k, v] of Object.entries(act.rewards)) {
+  for (const [k, v] of Object.entries(rewards)) {
     state.gs.resources[k] = (state.gs.resources[k] || 0) + v;
     rt += v + ic[k] + ' ';
   }
@@ -68,7 +70,7 @@ export function doTerrainAction(r, c) {
   else if (terrain === 'water') trackFish();
   else if (terrain === 'mountain') trackStone();
   const questChanged = recordHarvest(terrain);
-  return { name: act.name, rewards: act.rewards, gemAmt, message: rt.trim(), questChanged };
+  return { name: act.name, rewards, gemAmt, message: rt.trim(), questChanged };
 }
 
 // === Building Move Mode ===

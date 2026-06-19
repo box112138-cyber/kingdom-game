@@ -67,6 +67,13 @@ export const B = {
     effects(l) { return { heroCap: Math.min(3 + l, 15) }; },
     prod(l) { return {}; }
   },
+  tavern: {
+    id: 'tavern', name: '酒馆', icon: '🍺', desc: '招募',
+    size: 1, baseCost: { gold: 180, food: 80, wood: 40 }, costScale: 1.55, maxL: 12,
+    requires: { castle: 3, barracks: 1 },
+    effects(l) { return { mp: l * 2, trainSpeed: Math.min(l * 0.05, 0.45) }; },
+    prod(l) { if (l === 0) return {}; return { soldiers: l * 0.08 }; }
+  },
   builderHut: {
     id: 'builderHut', name: '工坊', icon: '🔨', desc: '工人+1',
     size: 1, baseCost: { gold: 100, wood: 30, stone: 20 }, costScale: 1.5, maxL: 5,
@@ -92,6 +99,13 @@ export const B = {
     requires: { castle: 5 },
     effects(l) { return { cr: Math.min(l * 0.05, 0.4) }; },
     prod(l) { return {}; }
+  },
+  alchemyLab: {
+    id: 'alchemyLab', name: '炼金工坊', icon: '⚗️', desc: '宝石与英雄',
+    size: 1, baseCost: { gold: 420, stone: 80, gems: 20 }, costScale: 1.7, maxL: 10,
+    requires: { castle: 5, temple: 2 },
+    effects(l) { return { heroAtk: l * 2, heroDef: Math.floor(l * 1.2) }; },
+    prod(l) { if (l === 0) return {}; return { gems: l * 0.35 }; }
   },
   watchtower: {
     id: 'watchtower', name: '瞭望塔', icon: '🗼', desc: '预警',
@@ -119,6 +133,13 @@ export const B = {
     size: 1, baseCost: { gold: 200, wood: 40, stone: 50 }, costScale: 1.6, maxL: 10,
     requires: { castle: 5, barracks: 3 },
     effects(l) { return { towerAtk: l * 8 }; },
+    prod(l) { return {}; }
+  },
+  beastPen: {
+    id: 'beastPen', name: '兽栏', icon: '🐴', desc: '骑兵战力',
+    size: 1, baseCost: { gold: 320, food: 160, wood: 80 }, costScale: 1.6, maxL: 10,
+    requires: { castle: 4, barracks: 2 },
+    effects(l) { return { cavalryPower: l * 7, soldierPower: 1 + l * 0.05 }; },
     prod(l) { return {}; }
   },
   port: {
@@ -167,6 +188,13 @@ export const B = {
     prod(l) { return {}; }
   }
 };
+
+export const SHOP_BUILDINGS = [
+  'farm', 'mine', 'quarry', 'lumberMill', 'goldStorage', 'granary', 'stoneStorage',
+  'barracks', 'tavern', 'builderHut', 'bridge', 'statue', 'garden', 'fountain',
+  'market', 'temple', 'heroThrone', 'watchtower', 'hospital', 'beastPen',
+  'port', 'library', 'arrowTower', 'workshop', 'alchemyLab'
+];
 
 // === Monster Types ===
 export const MONSTERS = {

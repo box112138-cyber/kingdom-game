@@ -1,4 +1,4 @@
-import { B } from './config.js';
+import { B, SHOP_BUILDINGS } from './config.js';
 import { state, addLog } from './state.js';
 import { canPlace, occupyCells, clearCells } from './map.js';
 import { buildCost, canAffordB, meetsReq } from './buildings.js';
@@ -20,31 +20,8 @@ export function toggleShop() {
 // === Shop Sidebar Updates ===
 
 export function updateShopSidebar() {
-  document.getElementById('shopStock').textContent = state.gs.walls;
-  document.getElementById('shopQty').textContent = state.buyQty;
-  const total = 100 * state.buyQty;
-  const canBuy = (state.gs.resources.gold || 0) >= total;
-  document.getElementById('shopTotal').innerHTML = canBuy
-    ? rf(total)
-    : '<span style="color:var(--red)">' + rf(total) + '</span>';
   updateBuildShop();
   updateShopDot();
-}
-
-export function changeBuyQty(delta) {
-  state.buyQty = Math.max(1, Math.min(99, state.buyQty + delta));
-  updateShopSidebar();
-}
-
-// === Wall Buying ===
-
-export function buyWall(count) {
-  const cost = 100 * count;
-  if ((state.gs.resources.gold || 0) < cost) return;
-  state.gs.resources.gold -= cost;
-  state.gs.walls += count;
-  addLog('购买了' + count + '个城墙');
-  updateShopSidebar();
 }
 
 // === Building Shop (Dynamic List) ===
@@ -52,11 +29,7 @@ export function buyWall(count) {
 export function updateBuildShop() {
   try {
     let h = '';
-    const ids = ['farm', 'mine', 'quarry', 'lumberMill', 'goldStorage', 'granary', 'stoneStorage',
-                 'barracks', 'builderHut', 'bridge', 'statue', 'garden', 'fountain',
-                 'market', 'temple', 'heroThrone', 'watchtower', 'hospital',
-                 'port', 'library', 'arrowTower', 'workshop'];
-    for (const id of ids) {
+    for (const id of SHOP_BUILDINGS) {
       const def = B[id];
       const cost = def.baseCost;
       const costStr = Object.entries(cost).map(([k, v]) => rf(v) + ' ' + k).join(' ');
@@ -65,17 +38,17 @@ export function updateBuildShop() {
       const inv = state.gs.inventory && state.gs.inventory[id] ? state.gs.inventory[id] : 0;
 
       if (!ul) {
-        h += '<div style="color:var(--stone);font-size:10px">' +
+        h += '<div class="build-row locked">' +
              def.icon + ' ' + def.name + ' (需要' +
              Object.entries(def.requires).map(([rid, rl]) => B[rid].name + '等级' + rl).join('') +
              ')</div>';
       } else {
-        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px">' +
+        h += '<div class="build-row">' +
              '<span>' + def.icon + ' ' + def.name + (inv > 0 ? ' x' + inv : '') +
-             ' <span style="font-size:9px;color:var(--text-dim)">' + costStr + '</span></span>' +
-             '<span style="display:flex;gap:2px">' +
-             '<button data-action="buy" data-bid="' + id + '" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid var(--gold-dark);background:' + (af ? 'var(--gold)' : 'var(--stone)') + ';color:#1a1a2e;cursor:' + (af ? 'pointer' : 'default') + ';font-weight:bold" ' + (af ? '' : 'disabled') + '>购买</button>' +
-             (inv > 0 ? '<button data-action="place" data-bid="' + id + '" style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;font-weight:bold">放置</button>' : '') +
+             ' <span class="build-cost">' + costStr + '</span></span>' +
+             '<span class="build-actions">' +
+             '<button class="build-buy" data-action="buy" data-bid="' + id + '" ' + (af ? '' : 'disabled') + '>购买</button>' +
+             (inv > 0 ? '<button class="build-place" data-action="place" data-bid="' + id + '">放置</button>' : '') +
              '</span></div>';
       }
     }
@@ -84,7 +57,7 @@ export function updateBuildShop() {
     const pendingEl = document.getElementById('pendingBuild');
     if (state.pendingBid) {
       pendingEl.innerHTML = '点击地图放置: ' + B[state.pendingBid].icon + ' ' + B[state.pendingBid].name +
-                            ' <a href="#" data-action="cancelPlace" style="color:var(--red)">取消</a>';
+                            ' <a href="#" data-action="cancelPlace">取消</a>';
     } else {
       pendingEl.innerHTML = '';
     }

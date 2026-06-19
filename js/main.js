@@ -4,7 +4,7 @@ import {
   state, createState, initBuildings, initState, isClaimed, addLog, saveGame, normalizeGameState
 } from './state.js';
 import { fullGenMap, placeBuildings, restoreBuildingsFromSave, occupyCells, genTreasures, genMonsters, genRuins } from './map.js';
-import { computeProd, upgradeHero, tickTraining } from './economy.js';
+import { computeProd, startTraining, upgradeHero, tickTraining } from './economy.js';
 import { upgradeB, processUpgrades } from './buildings.js';
 import { doTerrainAction } from './terrain.js';
 import {
@@ -15,7 +15,7 @@ import { toggleGame, handleGameClick, showHint, GM } from './match3.js';
 import {
   renderMap, rebuildUI, renderUpgradePanel,
   showFloatCard, hideFloatCard, showReward, spawnWorker,
-  updateCell, updateWorkers, applyWorkerTransform
+  updateCell, updateWorkers, applyWorkerTransform, resourceCap
 } from './renderer.js';
 import {
   applyT, setZ, zoomIn, zoomOut, zoomReset, focusOnCastle,
@@ -27,6 +27,7 @@ import { initMultiplayer, markWorldDirty, updatePresence } from './multiplayer.j
 import { initCharacterPicker, openCharacterPicker } from './character.js';
 import { checkQuests, recordCharacterCreated } from './quests.js';
 import { processMonsterWaveTick, processResourceTick, processWorldEventTick } from './systems.js';
+import { initDailyTribute } from './daily.js';
 
 // ========== Match-3 Score Conversion ==========
 
@@ -169,6 +170,22 @@ function fcBtnClick() {
       updateShopDot();
       showFloatCard('heroThrone');
     }
+  } else if (state.fcBid === 'barracks') {
+    if (startTraining(5)) {
+      addLog('开始训练士兵');
+      rebuildUI();
+      renderUpgradePanel();
+      showFloatCard('barracks');
+      markWorldDirty();
+    } else if (upgradeB(state.fcBid)) {
+      updateShopSidebar();
+      updateShopDot();
+      spawnWorker(state.fcBid);
+      renderUpgradePanel();
+      renderMap();
+      markWorldDirty();
+      hideFloatCard();
+    }
   } else if (state.fcBid === 'C') {
     // Claim territory
     if (state.selectedCell && (state.gs.resources.gold || 0) >= 50) {
@@ -245,7 +262,10 @@ function tick() {
       const k = keys[i];
       if (!k) return;
       const ve = el.querySelector('.res-value'), re = el.querySelector('.res-rate');
-      if (ve) ve.textContent = rf(state.gs.resources[k] || 0);
+      if (ve) {
+        const cap = resourceCap(k);
+        ve.textContent = cap ? rf(state.gs.resources[k] || 0) + '/' + rf(cap) : rf(state.gs.resources[k] || 0);
+      }
       if (re) {
         const rt = prod[k] || 0;
         re.textContent = rt > 0 ? '+' + rt.toFixed(1) + '/s' : '0/s';
@@ -269,7 +289,10 @@ function updateResourceBar() {
     const k = keys[i];
     if (!k) return;
     const ve = el.querySelector('.res-value'), re = el.querySelector('.res-rate');
-    if (ve) ve.textContent = rf(state.gs.resources[k] || 0);
+    if (ve) {
+      const cap = resourceCap(k);
+      ve.textContent = cap ? rf(state.gs.resources[k] || 0) + '/' + rf(cap) : rf(state.gs.resources[k] || 0);
+    }
     if (re) {
       const rt = prod[k] || 0;
       re.textContent = rt > 0 ? '+' + rt.toFixed(1) + '/s' : '0/s';
@@ -317,24 +340,6 @@ function setupButtons() {
   document.getElementById('saveBtn').addEventListener('click', saveGame);
   document.getElementById('resetBtn').addEventListener('click', resetGame);
   document.getElementById('prestigeBtn').addEventListener('click', doPrestige);
-
-  document.getElementById('buyQtyDec').addEventListener('click', function () {
-    state.buyQty = Math.max(1, Math.min(99, state.buyQty - 1));
-    updateShopSidebar();
-  });
-  document.getElementById('buyQtyInc').addEventListener('click', function () {
-    state.buyQty = Math.max(1, Math.min(99, state.buyQty + 1));
-    updateShopSidebar();
-  });
-  document.getElementById('buyWallBtn').addEventListener('click', function () {
-    const cost = 100 * state.buyQty;
-    if ((state.gs.resources.gold || 0) < cost) return;
-    state.gs.resources.gold -= cost;
-    state.gs.walls += state.buyQty;
-    addLog('购买了' + state.buyQty + '个城墙');
-    updateShopSidebar();
-    markWorldDirty();
-  });
 
   // Dynamic shop content (event delegation)
   document.getElementById('buildShop').addEventListener('click', function (e) {
@@ -392,6 +397,7 @@ function startGame() {
   setupMoveToggle();
   initMultiplayer({ onSnapshotApplied: updatePlayerAvatar });
   initCharacterPicker({ onChange: function () { updatePlayerAvatar(); updatePresence(); handleQuestChange(recordCharacterCreated()); } });
+  initDailyTribute({ onClaim: function () { rebuildUI(); markWorldDirty(); } });
 
   renderMap();
   rebuildUI();

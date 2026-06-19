@@ -1,4 +1,5 @@
 import { state, addLog, createQuestState } from './state.js';
+import { addSoldiers } from './economy.js';
 
 export const QUESTS = [
   { id: 'create_character', title: '创建角色', desc: '选择你的王国化身', type: 'characterCreated', target: 1, reward: { gold: 80 } },
@@ -6,7 +7,11 @@ export const QUESTS = [
   { id: 'claim_land', title: '扩张领土', desc: '声明 1 块领地', type: 'claimedCells', target: 1, reward: { gold: 120 } },
   { id: 'place_building', title: '添置建筑', desc: '购买并放置 1 座新建筑', type: 'buildingPlaced', target: 1, reward: { food: 80, stone: 30 } },
   { id: 'defeat_monster', title: '守护王国', desc: '击败 1 只怪物', type: 'monsterDefeated', target: 1, reward: { gold: 180, gems: 5 } },
-  { id: 'save_gold', title: '积累财富', desc: '金币达到 1000', type: 'resource', resource: 'gold', target: 1000, reward: { gems: 10 } }
+  { id: 'save_gold', title: '积累财富', desc: '金币达到 1000', type: 'resource', resource: 'gold', target: 1000, reward: { gems: 10 } },
+  { id: 'grow_town', title: '热闹城镇', desc: '放置 3 座新建筑', type: 'buildingPlaced', target: 3, reward: { gold: 220, food: 120 } },
+  { id: 'raise_guard', title: '组建卫队', desc: '拥有 10 名士兵', type: 'resource', resource: 'soldiers', target: 10, reward: { gold: 160, gems: 6 } },
+  { id: 'hunt_band', title: '清剿威胁', desc: '累计击败 3 只怪物', type: 'monsterDefeated', target: 3, reward: { stone: 120, gems: 10 } },
+  { id: 'gem_cache', title: '宝石储备', desc: '宝石达到 50', type: 'resource', resource: 'gems', target: 50, reward: { gold: 360 } }
 ];
 
 export function ensureQuests() {
@@ -81,7 +86,8 @@ function completeQuest(quest) {
   state.gs.quests.completed.push(quest.id);
   state.gs.quests.active = state.gs.quests.active.filter(id => id !== quest.id);
   for (const [key, value] of Object.entries(quest.reward || {})) {
-    state.gs.resources[key] = (state.gs.resources[key] || 0) + value;
+    if (key === 'soldiers') addSoldiers(value);
+    else state.gs.resources[key] = (state.gs.resources[key] || 0) + value;
   }
   addLog('📜 任务完成：' + quest.title + rewardText(quest.reward));
 }
@@ -99,6 +105,6 @@ function updateActiveQuests(questState) {
 function rewardText(reward) {
   const entries = Object.entries(reward || {});
   if (!entries.length) return '';
-  const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', gems: '💎' };
+  const labels = { gold: 'G', food: 'F', wood: 'W', stone: 'S', soldiers: '兵', gems: '💎' };
   return ' +' + entries.map(([key, value]) => value + (labels[key] || key)).join(' +');
 }

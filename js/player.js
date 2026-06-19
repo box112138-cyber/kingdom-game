@@ -9,6 +9,7 @@ import {
 } from './renderer.js';
 import { showInterior, hideInterior, moveIntPlayer } from './interiors.js';
 import { resolveCombat } from './combat.js';
+import { addSoldiers } from './economy.js';
 import { trackBuild } from './achievements.js';
 import { startManualCombat } from './match3.js';
 import { markWorldDirty, renderRemotePlayers, updatePresence } from './multiplayer.js';
@@ -64,6 +65,27 @@ export function focusOnCastle() {
   state.viewPanX = cachedVW / 2 - (cc + 0.5) * CS * state.viewZoom;
   state.viewPanY = cachedVH / 2 - (cr + 0.5) * CS * state.viewZoom;
   applyT();
+}
+
+export function focusOnCell(r, c, zoom) {
+  if (!cachedVW || !cachedVH) refreshViewportCache();
+  state.viewZoom = zoom || state.viewZoom;
+  state.viewPanX = cachedVW / 2 - (c + 0.5) * CS * state.viewZoom;
+  state.viewPanY = cachedVH / 2 - (r + 0.5) * CS * state.viewZoom;
+  applyT();
+}
+
+export function focusOnThreat() {
+  const waveMonster = state.gs.monsters && state.gs.monsters.find(m => m.alive && m.wave);
+  if (!waveMonster) {
+    addLog('当前没有来袭怪物');
+    return false;
+  }
+  state.selectedCell = { r: waveMonster.r, c: waveMonster.c };
+  focusOnCell(waveMonster.r, waveMonster.c, Math.max(state.viewZoom, 1.2));
+  updateSelOverlay();
+  addLog('已定位来袭怪物 (' + waveMonster.r + ',' + waveMonster.c + ')');
+  return true;
 }
 
 // ========== Player Position ==========
@@ -257,6 +279,12 @@ export function setupKeyboard() {
       return;
     }
 
+    if (e.key === 'l' && !e.ctrlKey) {
+      e.preventDefault();
+      focusOnThreat();
+      return;
+    }
+
     // M key: manual combat against adjacent monster
     if (e.key === 'm' && !e.ctrlKey) {
       const adj = [[-1,0],[1,0],[0,-1],[0,1]];
@@ -356,9 +384,11 @@ export function setupKeyboard() {
       treasure.collected = true;
       const gold = 40 + Math.floor(Math.random() * 60);
       const gems = Math.random() < 0.3 ? Math.floor(Math.random() * 10) + 1 : 0;
+      const rescued = Math.random() < 0.25 ? addSoldiers(1) : 0;
       state.gs.resources.gold = (state.gs.resources.gold || 0) + gold;
       let rt = '+' + gold + 'G';
       if (gems > 0) { state.gs.resources.gems = (state.gs.resources.gems || 0) + gems; rt += ' +' + gems + '💎'; }
+      if (rescued > 0) rt += ' +' + rescued + '兵';
       addLog('🎁 发现宝箱！ ' + rt);
       if (recordTreasureFound()) {
         rebuildUI();
@@ -401,6 +431,7 @@ export function setupViewport() {
   const vp = document.getElementById('mapViewport');
 
   vp.addEventListener('wheel', function (e) {
+    if (e.target.closest('.shop-overlay') || e.target.closest('.game-overlay') || e.target.closest('.interior-overlay')) return;
     e.preventDefault();
     const rect = vp.getBoundingClientRect();
     setZ(state.viewZoom * (e.deltaY < 0 ? 1.12 : 0.88), e.clientX - rect.left, e.clientY - rect.top);
@@ -479,4 +510,6 @@ export function setupMoveToggle() {
     else btn.classList.remove('active');
     renderMap();
   });
+
+  document.getElementById('locateThreatBtn').addEventListener('click', focusOnThreat);
 }

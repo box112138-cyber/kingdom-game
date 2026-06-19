@@ -32,7 +32,7 @@ function getAdjacencyBonus(bid, kind) {
 // === Resource Production ===
 
 export function computeProd() {
-  const p = { gold: 0, food: 0, stone: 0 };
+  const p = { gold: 0, food: 0, stone: 0, wood: 0, soldiers: 0, gems: 0 };
   let gm = 1;
   let mktL = 0;
 
@@ -80,11 +80,41 @@ export function stoneCap() {
   return c;
 }
 
+export function woodCap() {
+  let c = 1000;
+  const lumberL = state.gs.buildings.lumberMill || 0;
+  if (lumberL > 0) c += lumberL * 600;
+  return c;
+}
+
+export function gemCap() {
+  let c = 300;
+  const templeL = state.gs.buildings.temple || 0;
+  const alchemyL = state.gs.buildings.alchemyLab || 0;
+  if (templeL > 0) c += templeL * 80;
+  if (alchemyL > 0) c += alchemyL * 120;
+  return c;
+}
+
 // === Population & Power ===
 
 export function maxPop() {
-  const cl = state.gs.buildings.castle || 0;
-  return cl > 0 ? B.castle.effects(cl).mp : 0;
+  let total = 0;
+  for (const [id, level] of Object.entries(state.gs.buildings)) {
+    if (!B[id] || level <= 0) continue;
+    const effects = B[id].effects(level);
+    if (effects.mp) total += effects.mp;
+  }
+  return total;
+}
+
+export function addSoldiers(amount) {
+  const cap = maxPop();
+  if (cap <= 0) return 0;
+  const current = state.gs.resources.soldiers || 0;
+  const added = Math.max(0, Math.min(amount, cap - current));
+  state.gs.resources.soldiers = current + added;
+  return added;
 }
 
 export function power() {
@@ -93,7 +123,10 @@ export function power() {
   if (br > 0) p += B.barracks.effects(br).pb;
   const at = state.gs.buildings.arrowTower || 0;
   if (at > 0) p += B.arrowTower.effects(at).towerAtk;
-  p += Math.floor((state.gs.resources.soldiers || 0) * 2);
+  const beastL = state.gs.buildings.beastPen || 0;
+  if (beastL > 0) p += B.beastPen.effects(beastL).cavalryPower;
+  const soldierMult = beastL > 0 ? B.beastPen.effects(beastL).soldierPower : 1;
+  p += Math.floor((state.gs.resources.soldiers || 0) * 2 * soldierMult);
   p += state.gs.walls * 3;
   return p;
 }
@@ -107,6 +140,12 @@ export function getHeroStats() {
   if (eq.weapon) bonusAtk = eq.weapon.atk || 0;
   if (eq.armor) bonusDef = eq.armor.def || 0;
   if (eq.ring) bonusHp = eq.ring.hp || 0;
+  const alchemyL = state.gs.buildings.alchemyLab || 0;
+  if (alchemyL > 0) {
+    const alchemy = B.alchemyLab.effects(alchemyL);
+    bonusAtk += alchemy.heroAtk;
+    bonusDef += alchemy.heroDef;
+  }
   return {
     name: '秦梧', level: l,
     hp: 100 + l * 50 + bonusHp,
@@ -146,7 +185,22 @@ export function trainCost(count) {
 }
 
 export function trainTime(count) {
-  return count * 12;
+  const tavernL = state.gs.buildings.tavern || 0;
+  const speed = tavernL > 0 ? B.tavern.effects(tavernL).trainSpeed : 0;
+  return Math.max(4, Math.floor(count * 12 * (1 - speed)));
+}
+
+export function startTraining(count) {
+  const barracksL = state.gs.buildings.barracks || 0;
+  if (barracksL <= 0 || state.gs.trainQueue.total > 0) return false;
+  const room = Math.floor(maxPop() - (state.gs.resources.soldiers || 0));
+  const actualCount = Math.max(0, Math.min(count, room));
+  if (actualCount <= 0) return false;
+  const cost = trainCost(actualCount);
+  if ((state.gs.resources.food || 0) < cost.food) return false;
+  state.gs.resources.food -= cost.food;
+  state.gs.trainQueue = { count: 0, total: actualCount, ticks: trainTime(1), level: barracksL };
+  return true;
 }
 
 export function tickTraining() {
@@ -158,7 +212,7 @@ export function tickTraining() {
     if (q.count < q.total) {
       q.ticks = trainTime(1);
     } else {
-      state.gs.resources.soldiers = (state.gs.resources.soldiers || 0) + q.total;
+      addSoldiers(q.total);
       q.count = 0;
       q.total = 0;
       q.ticks = 0;
